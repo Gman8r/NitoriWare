@@ -23,6 +23,8 @@ public class MenuGameMode : MonoBehaviour
     [SerializeField]
     private string modeName;
     [SerializeField]
+    private string overrideSceneName;
+    [SerializeField]
     private string prerequisiteStage;
     [SerializeField]
     private int prerequisiteScore;
@@ -50,19 +52,22 @@ public class MenuGameMode : MonoBehaviour
 
         if (blocker != null)
         {
-            if (PrefsHelper.getHighScore(prerequisiteStage) < prerequisiteScore)
+            var isUnlockedInPrefs = PrefsHelper.isStageUnlocked(modeName) || GameController.instance.ShowcaseMode || PrefsHelper.getVisitedStage(modeName);
+            if (isUnlockedInPrefs || PrefsHelper.getHighScore(prerequisiteStage) >= prerequisiteScore)
+            {
+                if (!isUnlockedInPrefs)
+                    PrefsHelper.setStageUnlocked(modeName, true);
+                if (!PrefsHelper.getVisitedStage(modeName))
+                {
+                    unlockedText.SetActive(true);
+                }
+            }
+            else
             {
                 blocker.SetActive(true);
                 menuButton.gameObject.SetActive(false);
                 highScoreText.gameObject.SetActive(false);
                 triggerDescription = false;
-            }
-            else
-            {
-                if (!PrefsHelper.getVisitedStage(modeName))
-                {
-                    unlockedText.SetActive(true);
-                }
             }
         }
 	}
@@ -116,6 +121,6 @@ public class MenuGameMode : MonoBehaviour
 
     public void startGameplay()
     {
-        gameplayMenu.startGameplay(modeName);
+        gameplayMenu.startGameplay(string.IsNullOrEmpty(overrideSceneName) ? modeName : overrideSceneName);
     }
 }

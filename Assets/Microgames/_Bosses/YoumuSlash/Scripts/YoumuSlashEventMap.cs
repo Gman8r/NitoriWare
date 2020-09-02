@@ -4,10 +4,13 @@ using UnityEngine;
 using UnityEngine.Events;
 using System.Linq;
 
+[ExecuteInEditMode]
 public class YoumuSlashEventMap : MonoBehaviour
 {
     [SerializeField]
-    private YoumuSlashTimingData timingData;
+	private YoumuSlashTimingData timingData;
+	[SerializeField]
+	private bool sort;
     [SerializeField]
     private List<Event> events;
 
@@ -16,6 +19,7 @@ public class YoumuSlashEventMap : MonoBehaviour
     {
         public string description;
         public float beat;
+        public bool debugPause;
         public UnityEvent unityEvent;
     }
 
@@ -23,17 +27,38 @@ public class YoumuSlashEventMap : MonoBehaviour
     private Queue<Event> upcomingEvents;
 
     void Start()
-    {
+	{
+		if (!Application.isPlaying)
+			return;
         upcomingEvents = new Queue<Event>(events);
+        YoumuSlashPlayerController.onFail += onFail;
     }
 
-   void Update()
-    {
+    void Update()
+	{
+		if (!Application.isPlaying)
+		{
+			if (sort)
+			{
+				events = events.OrderBy (a => a.beat).ToList ();
+				sort = false;
+			}
+				
+			return;
+		}
         if (!upcomingEvents.Any())
             return;
         else if (timingData.CurrentBeat >= upcomingEvents.Peek().beat)
         {
-            upcomingEvents.Dequeue().unityEvent.Invoke();
+            var newEvent = upcomingEvents.Dequeue();
+            newEvent.unityEvent.Invoke();
+            if (newEvent.debugPause)
+                Debug.Break();
         }
+    }
+
+    void onFail()
+    {
+        enabled = false;
     }
 }

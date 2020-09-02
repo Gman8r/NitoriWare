@@ -31,16 +31,16 @@ public class StageController : MonoBehaviour
 	public GameObject scene;
 	public Sprite[] controlSchemeSprites;
 
-	public StageGameOverMenu gameOverMenu;
+    public CommandDisplay commandDisplay;
+    public ControlDisplay controlDisplay;
+
+    public StageGameOverMenu gameOverMenu;
 
 	public static float beatLength;
 
 	private MicrogameTraits microgameTraits;
 	private float animationStartTime, outroPlayTime;
     private Animator[] sceneAnimators;
-
-    private CommandDisplay commandDisplay;
-    private ControlDisplay controlDisplay;
 
 	private Queue<MicrogameInstance> microgameQueue;
 	private class MicrogameInstance
@@ -71,6 +71,7 @@ public class StageController : MonoBehaviour
 
 	void Start()
 	{
+        AssetsUnloadingBusy = false;
 		beatLength = outroSource.clip.length / 4f;
 		Application.backgroundLoadingPriority = sceneLoadPriority;
 		voicePlayer.loadClips(stage.getVoiceSet());
@@ -107,8 +108,10 @@ public class StageController : MonoBehaviour
 	{
 		instance = this;
         sceneAnimators = transform.root.GetComponentsInChildren<Animator>();
-        commandDisplay = transform.parent.Find("UI").Find("Command").GetComponent<CommandDisplay>();
-        controlDisplay = transform.parent.Find("UI").Find("Control Display").GetComponent<ControlDisplay>();
+        if (commandDisplay == null)
+            commandDisplay = transform.parent.Find("UI").Find("Command").GetComponent<CommandDisplay>();
+        if (controlDisplay == null)
+            controlDisplay = transform.parent.Find("UI").Find("Control Display").GetComponent<ControlDisplay>();
     }
 
 	void updateMicrogameQueue(int maxQueueSize)
@@ -242,7 +245,7 @@ public class StageController : MonoBehaviour
 		outroPlayTime = Time.time;
 
 		setAnimationPart(AnimationPart.Outro);
-		if (!microgameVictoryStatus)
+		if (!microgameVictoryStatus && !godMode)
 			lowerLife();
 
 		endMicrogame();
@@ -343,12 +346,13 @@ public class StageController : MonoBehaviour
 
 		Time.timeScale = getSpeedMult();
 
-		commandDisplay.setText(microgameTraits.localizedCommand);
+		commandDisplay.setText(microgameTraits.localizedCommand, microgameTraits.commandAnimatorOverride);
         controlDisplay.setControlScheme(microgameTraits.controlScheme);
+
 
 		if (!introSource.isPlaying && !muteMusic)
 			introSource.Play();
-	}
+    }
 
 	void updateToGameOver()
 	{
@@ -462,8 +466,33 @@ public class StageController : MonoBehaviour
     void unloadMicrogame()
     {
         finishedMicrogame.isBeingUnloaded = true;
-        SceneManager.UnloadSceneAsync(finishedMicrogame.scene);
+        StartCoroutine(unloadMicrogameAsync(finishedMicrogame.scene));
         MicrogameController.instance = null;
+    }
+
+    static bool AssetsUnloadingBusy = false;
+    IEnumerator unloadMicrogameAsync(Scene scene)
+    {
+        var sceneName = scene.name;
+        var operation = SceneManager.UnloadSceneAsync(scene);
+        //Debug.Log("UNLOADING GAME " + sceneName);
+        while (operation.progress < 1f)
+        {
+            yield return null;
+        }
+        //Debug.Log("UNLOADING RESOURCES " + sceneName);
+        if (!AssetsUnloadingBusy)
+        {
+            AssetsUnloadingBusy = true;
+            var unloadOperation = Resources.UnloadUnusedAssets();
+            while (unloadOperation.progress < 1f)
+            {
+                yield return null;
+            }
+            AssetsUnloadingBusy = false;
+        }
+        //Debug.Log("DONE " + sceneName);
+
     }
 
 	public void onPause()
@@ -518,8 +547,6 @@ public class StageController : MonoBehaviour
 	/// <param name="final"></param>
 	public void setMicrogameVictory(bool victory, bool final)
 	{
-		if (godMode)
-			victory = true;
 
 		if (victoryDetermined)
 		{

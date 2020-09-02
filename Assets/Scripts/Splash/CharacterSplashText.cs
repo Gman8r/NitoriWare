@@ -43,13 +43,13 @@ public class CharacterSplashText : MonoBehaviour
 
     void queueShift()
     {
-        GameController.instance.sceneShifter.startShift(phrase.shiftScene, sceneTime / 2f);
+        GameController.instance.sceneShifter.startShift(phrase.shiftScene, sceneTime / 2f, useFirstBuildIndex: true);
         GameController.instance.sceneShifter.setFadeDuration(holdFadeDuration);
     }
 
     int determinePhraseIndex()
     {
-        return (int)PrefsHelper.getProgress();
+        return GameController.instance.ShowcaseMode ? 0 : (int)PrefsHelper.getProgress();
     }
 
     void setTexts(Phrase phrase)

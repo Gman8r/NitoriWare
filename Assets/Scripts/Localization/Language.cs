@@ -9,12 +9,13 @@ public class Language
     [SerializeField]
     private string languageID;
     public string languageName;
-    public bool incomplete;
+    public bool isAsian;
     public bool disableSelect;
     public string overrideFileName;
     public Font overrideFont;
     public bool forceUnbold;
-    public TMP_FontAsset tmproFallback;
+    [UnityEngine.Serialization.FormerlySerializedAs("tmproFallback")]
+    public TMP_FontAsset tmpFont;
 
     public string getFileName()
     {
